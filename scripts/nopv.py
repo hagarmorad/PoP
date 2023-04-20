@@ -38,7 +38,8 @@ def get_mut_in_range(mut, start, end, mut_type):
         string of all mutations in this range seperated by ;
 
     '''
-    return "; ".join([x for x in mut if start < int(x.split("-" + mut_type)[0][1:-1]) and end > int(x.split("-" + mut_type)[0][1:-1])])
+    a = "; ".join([x for x in mut if start < int(x.split("-" + mut_type)[0][1:-1]) and end > int(x.split("-" + mut_type)[0][1:-1])])
+    return  a
     
 def lester_format(muttbl, ref_name):
     '''
@@ -76,6 +77,8 @@ def lester_format(muttbl, ref_name):
             nonsyn = np.where(muttbl[sample + "_AA_temp"].notnull() , \
                               muttbl[sample + "_NT_temp"] + "-nonsyn " + muttbl["gene_name"] + "(" + muttbl[sample + "_AA_temp"] + ")", None)
             nonsyn = nonsyn[nonsyn != np.array(None)].tolist() #remove None, cast to list
+            
+            nonsyn = [x for x in nonsyn if not str(x) == "nan"]
     
     
             final_table.loc["Mutations in CRE5", sample] = get_mut_in_range(syn, 120, 182, "syn")
@@ -115,4 +118,3 @@ def run(fasta):
         ref_name = f.readline().replace(">","").split(" ")[0]
     lester_format(muttbl, ref_name).to_csv(mut_file.replace("mutations.xlsx", "nOPV_mutations_attenuations.csv"))
     
-        

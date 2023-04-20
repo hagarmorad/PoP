@@ -256,7 +256,7 @@ def run_ddns(alignment_file,regions_csv,output):
     '''
     sheet_name = regions_csv.split("/")[-1].split(".csv")[0]
     sequences = get_sequences(alignment_file)
-    mutations_positions_nt = mutations_positions(sequences)
+    mutations_positions_nt = mutations_positions(sequences,1)
     mutations_by_sample_nt = mutations_by_sample(mutations_positions_nt,sequences)
     regions = get_regions(regions_csv)
     gene_names, position_on_gene_nt, position_on_gene_aa = get_gene(mutations_positions_nt, regions)
@@ -289,7 +289,7 @@ def run(alignment_file,regions_csv,output):
     '''
     sheet_name = regions_csv.split("/")[-1].split(".csv")[0]
     sequences = get_sequences(alignment_file)
-    mutations_positions_nt = mutations_positions(sequences)
+    mutations_positions_nt = mutations_positions(sequences,1)
     mutations_by_sample_nt = mutations_by_sample(mutations_positions_nt,sequences)
     regions = get_regions(regions_csv)
     gene_names, position_on_gene_nt, position_on_gene_aa = get_gene(mutations_positions_nt, regions)

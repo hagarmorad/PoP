@@ -83,7 +83,7 @@ def get_sequences(alignment_file):
 
 #get mutations positions list by comparing all sequences to each other.
 #"-" and "N" are excluded.
-def mutations_positions(sequences, no_n = 1):
+def mutations_positions(sequences, no_n = 0):
     mutations_positons = []
     seq_length = len(next(iter(sequences.values())))
     for pos in range(seq_length-1):

@@ -6,6 +6,7 @@ Created on Mon Feb 20 12:13:32 2023
 @author: hagar
 """
 import pandas as pd 
+from pathlib import Path
 import csv
 import subprocess
 from utils.utils import create_dirs, mafft, change_header
@@ -26,9 +27,9 @@ def get_barcode_name(barcode_csv):
 
 
 def minimap(fastq_path, reference, barcodes, output):
-    minimap = "minimap2 -ax map-ont %(ref)s %(fastq_dir)s/*.fastq.gz | \
+    minimap = "minimap2 -ax map-ont %(ref)s %(fastq_dir)s/*.fastq* | \
                 samtools view -bS -F 4 | samtools sort > %(output)s.bam"
-    minimap = "minimap2 -ax map-ont %(ref)s %(fastq_dir)s/*.fastq.gz | \
+    minimap = "minimap2 -ax map-ont %(ref)s %(fastq_dir)s/*.fastq* | \
                 samtools sort > %(output)s.bam"
     split = "bamtools split -in %(bam)s.bam -reference"
     
@@ -79,7 +80,7 @@ def get_stat(depth_file, sample, stat, ref):
     covered_bases = int(stat.loc[ref]["covbases"])
     coverage = int(stat.loc[ref]["coverage"])
     
-    depths = [int(x.split('\t')[2]) for x in open(depth_file).readlines()]
+    depths = [int(x.split('\t')[2]) for x in open(depth_file).readlines()] if Path(depth_file).is_file() else ''
     mean_depth= str(round(mean(depths),2)) if depths else ''
     min_depth = min(depths) if depths else ''
     max_depth = max(depths) if depths else ''
@@ -102,9 +103,14 @@ def QC_reports(barcodes, output):
     for sample in barcodes.values():
         
         #general information
-        total_reads = pysam.AlignmentFile(output + "BAM/" + sample + ".bam").count(until_eof=True)
-        mapped_reads = total_reads - pysam.AlignmentFile(output + "BAM/" + sample + ".REF_unmapped.bam").count(until_eof=True)
-        mapped_percentage = round(mapped_reads / total_reads * 100, 2)
+        total_reads = pysam.AlignmentFile(output + "BAM/" + sample + ".bam").count(until_eof=True)  if Path(output + "BAM/" + sample + ".bam").is_file() else 0
+        if total_reads == 0:
+            continue
+        if Path(output + "BAM/" + sample + ".REF_unmapped.bam").is_file():
+            mapped_reads = total_reads - pysam.AlignmentFile(output + "BAM/" + sample + ".REF_unmapped.bam").count(until_eof=True)
+        else:
+            mapped_reads = total_reads
+        mapped_percentage = round(mapped_reads / total_reads * 100, 2) 
         stat = pd.read_csv(StringIO(pysam.coverage(output + "BAM/" + sample + ".bam")), sep='\t').set_index("#rname")
         sabin1_reads_pre = (stat.loc["Sabin1"]["numreads"]/mapped_reads*100)
         sabin2_reads_pre = (stat.loc["Sabin2"]["numreads"]/mapped_reads*100)
@@ -114,7 +120,7 @@ def QC_reports(barcodes, output):
         
         # info by reference
         depth_file = output + "depth/" + sample +".REF_Sabin1.txt"
-        sabin1_df.loc[sample] = get_stat(depth_file, sample, stat, "Sabin1" )
+        sabin1_df.loc[sample] = get_stat(depth_file, sample, stat, "Sabin1" ) 
         depth_file = output + "depth/" + sample +".REF_Sabin2.txt"
         sabin2_df.loc[sample] = get_stat(depth_file, sample, stat, "Sabin2" )
         depth_file = output + "depth/" + sample +".REF_Sabin3.txt"
@@ -135,11 +141,11 @@ def run(fastq_path, barcode_csv, output):
     s3_ref = par_dir + "/refs/VP1_sabin3.fasta"
     create_dirs([output+"BAM/", output+"depth/", output+"CNS/", output+"CNS5/", output+"alignment/", output + "reports/"])
     barcodes = get_barcode_name(barcode_csv)
-    # minimap(fastq_path, reference, barcodes, output)
-    # depth(output)
-    # cns(output)
-    # align(s1_ref, s2_ref, s3_ref, output)
-    # QC_reports(barcodes, output)
+    minimap(fastq_path, reference, barcodes, output)
+    depth(output)
+    cns(output)
+    align(s1_ref, s2_ref, s3_ref, output)
+    QC_reports(barcodes, output)
     
     run_ddns(output + "alignment/sabin1_aligned.fasta" ,par_dir + "/refs/sabin1.csv", output + "reports/sabin1_mutations.xlsx")
     run_ddns(output + "alignment/sabin2_aligned.fasta" ,par_dir + "/refs/sabin2.csv", output + "reports/sabin2_mutations.xlsx")
