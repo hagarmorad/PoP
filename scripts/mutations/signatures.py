@@ -280,16 +280,22 @@ def run_ddns(alignment_file,regions_csv,output):
     save_format_xl(df, len(sequences)-1, output, sheet_name)
     
     
-def run(alignment_file,regions_csv,output):
+def run(alignment_file,regions_csv,output, noN = 0):
             
     
     '''
     run all functions.
-
+    Parameters:
+        noN: ignore N's and gups in mutation analysis if noN=1. 
+        default = 0
+            
+        analysing N's and gaps option is made for nOPV2.
+        why? nOPV2 5'UTR is longer than the other polioviruses
+        if you see N's in this region you should suspect its nOPV2
     '''
     sheet_name = regions_csv.split("/")[-1].split(".csv")[0]
     sequences = get_sequences(alignment_file)
-    mutations_positions_nt = mutations_positions(sequences,1)
+    mutations_positions_nt = mutations_positions(sequences,noN)
     mutations_by_sample_nt = mutations_by_sample(mutations_positions_nt,sequences)
     regions = get_regions(regions_csv)
     gene_names, position_on_gene_nt, position_on_gene_aa = get_gene(mutations_positions_nt, regions)
