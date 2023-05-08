@@ -51,7 +51,7 @@ def get_mut_in_range(mut, start, end, mut_type):
     return [x for x in mut if start < int(x.split("-" + mut_type)[0][1:-1]) and end > int(x.split("-" + mut_type)[0][1:-1])]
 
 
-def remove_fp_muts(mut_list, mut_str):
+def remove_fp_del(mut_list, mut_str):
     '''
     ** Help function for lester_format function. **
     *** you should understand lester_format function before reading this one.***
@@ -86,7 +86,7 @@ def remove_fp_muts(mut_list, mut_str):
         if mut[-1] == "-":
             if prev + 1 == pos: # if this positions follows the previous one
                 counter += 1
-                if counter >= 5:
+                if counter >= 15:
                     #remove the current mutation and all pervious 5 from the list.
                     new_mut_list = [x for x in new_mut_list if not int(x.split(mut_str)[0][1:-1]) in [pos,prev, prev-1,prev-2,prev-3,prev-4]] 
                      
@@ -112,6 +112,10 @@ def lester_format(muttbl, ref_name):
     final table - a table in lesters' format with nOPV attenuations.
 
     '''
+    #change all T's to U's as this its a rna virus
+    muttbl = muttbl.replace(['T'], 'U')
+    
+    
     final_table = pd.DataFrame()
 
     for col_name in muttbl:
@@ -136,8 +140,16 @@ def lester_format(muttbl, ref_name):
             nonsyn = nonsyn[nonsyn != np.array(None)].tolist() #remove None, cast to list
             nonsyn = [x for x in nonsyn if not str(x) == "nan"]  #remove None, cast to list
 
-            syn = remove_fp_muts(syn, "-syn")
-            nonsyn = remove_fp_muts(nonsyn, "-nonsyn")
+            syn = remove_fp_del(syn, "-syn")
+            nonsyn = remove_fp_del(nonsyn, "-nonsyn")
+            
+            #seperate UTR's from syn list
+            utrs = get_mut_in_range(syn,1,808, "syn") + get_mut_in_range(syn,7430,7501, "syn")
+            syn = [x for x in syn if x not in utrs]
+            utrs = [x.split("-")[0] for x in utrs]
+            
+            
+            
             
             # yellow part and green part are different peresntation of the mutations according to Lester's format
             
@@ -151,13 +163,13 @@ def lester_format(muttbl, ref_name):
             final_table.loc["Presence of modified Domain V in 5 NCR", sample] = True if len(domain_V_mut) <= 3 else False
             
             mut_814 =[x for x in nonsyn if x.split("-nonsyn")[0][1:-1] == '814']
-            final_table.loc["Presence of A at nucleotide 814", sample] = True if mut_814 else False
+            final_table.loc["Presence of A at nucleotide 814", sample] = False if mut_814 else True
     
             mut_817 =[x for x in nonsyn if x.split("-nonsyn")[0][1:-1] == '817']
-            final_table.loc["Presence of T at nucleotide 817", sample] = True if mut_817 else False
+            final_table.loc["Presence of T at nucleotide 817", sample] = False if mut_817 else True
             
             mut_1375 =[x for x in nonsyn if x.split("-nonsyn")[0][1:-1] == '1375']
-            final_table.loc["Presence of T at nucleotide 1375", sample] = True if mut_1375 else False
+            final_table.loc["Presence of T at nucleotide 1375", sample] = False if mut_1375 else True
             
             final_table.loc["Presence of Rec1 K38R mutation in 3D coding sequence", sample] = False if get_mut_in_range(nonsyn, 6158, 6160, "nonsyn") else True
             final_table.loc["Presence of HiFi D53N mutation in 3D coding sequence", sample] = False if get_mut_in_range(nonsyn, 6203, 6205, "nonsyn") else True
@@ -168,26 +180,42 @@ def lester_format(muttbl, ref_name):
 
             #green part 
             
+            ###CRE##
             final_table.loc["Mutations in CRE5", sample] = ("; ").join(CRE_mut)
-            final_table.loc["Mutations in Domain II in 5' NCR",sample] = ("; ").join(get_mut_in_range(syn, 185, 223, "syn"))
-            final_table.loc["Mutation U459C in Domain IV in 5 NCR",sample] = 'U459C' if 'T459C-syn' in syn else ""
-            final_table.loc["Mutations in modified Domain V in 5 NCR",sample] = ("; ").join(domain_V_mut)
-            final_table.loc["Mutation at VP1-143",sample] = ("; ").join(get_mut_in_range(nonsyn, 2969, 2971, "nonsyn"))
-            final_table.loc["Mutation at VP1-171",sample] = ("; ").join(get_mut_in_range(nonsyn,3056, 3056, "nonsyn"))
-            final_table.loc["Mutation at VP1-295",sample] = ("; ").join(get_mut_in_range(nonsyn, 3428, 3430, "nonsyn"))
-            final_table.loc["Mutations in 2C KO CRE",sample] = ("; ").join(get_mut_in_range(nonsyn, 4508, 4560, "nonsyn") )
-                       
+            
+            ###domainII###
+            domainII_mut = get_mut_in_range(syn, 185, 223, "syn")
+            final_table.loc["Mutations in Domain II in 5' NCR",sample] = ("; ").join(domainII_mut)
+            
+            ###459###
+            if 'U459C' in utrs:
+                final_table.loc["Mutation U459C in Domain IV in 5 NCR",sample] = 'U459C' 
+                utrs.remove("U459C")
+            else: 
+                final_table.loc["Mutation U459C in Domain IV in 5 NCR",sample] = '' 
+            ###domainV###
+            final_table.loc["Mutations in modified Domain V in 5 NCR",sample] = ("; ").join(domain_V_mut)            
+            
+            #nonsyn
+            vp1_143 = get_mut_in_range(nonsyn, 2969, 2971, "nonsyn")
+            final_table.loc["Mutation at VP1-143",sample] = ("; ").join(vp1_143)
+            
+            vp1_173 = get_mut_in_range(nonsyn,3056, 3056, "nonsyn")
+            final_table.loc["Mutation at VP1-171",sample] = ("; ").join(vp1_173)
+            
+            vp1_295 = get_mut_in_range(nonsyn, 3428, 3430, "nonsyn")
+            final_table.loc["Mutation at VP1-295",sample] = ("; ").join(vp1_295)
+            
+            ko_cre = get_mut_in_range(nonsyn, 4508, 4560, "nonsyn") 
+            final_table.loc["Mutations in 2C KO CRE",sample] = ("; ").join(ko_cre)
+            
+            #remove muts that are shown in the previous rowsfrom syn,nonsyn lists
+            syn = [x for x in syn if x not in (CRE_mut + domainII_mut + domain_V_mut)]
+            nonsyn = [x for x in nonsyn if x not in (vp1_143 + vp1_173 + vp1_295 + ko_cre)]
+            
             final_table.loc["syn",sample] =  ("; ").join(syn) 
             final_table.loc["nonSyn",sample] =  ("; ").join(nonsyn) 
-            
- 
-
-            
-           
-            
-
-
-    
+            final_table.loc["Additional mutations (non-coding)",sample] =  ("; ").join(utrs) 
     
     return final_table
     
